@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="images/logo.png" alt="recite logo" width="200"/>
+</p>
+
 # recite
 
 [![Go Lint](https://github.com/simondanielsson/recite/actions/workflows/lint.yml/badge.svg)](https://github.com/simondanielsson/recite/actions/workflows/lint.yml)
