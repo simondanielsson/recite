@@ -1,5 +1,8 @@
 # recite
 
+[![Go Lint](https://github.com/simondanielsson/recite/actions/workflows/lint.yml/badge.svg)](https://github.com/simondanielsson/recite/actions/workflows/lint.yml)
+[![Unit Tests](https://github.com/simondanielsson/recite/actions/workflows/test.yml/badge.svg)](https://github.com/simondanielsson/recite/actions/workflows/test.yml)
+
 Listen to your favorite articles as if it was an audiobook.
 
 This is a simple and accessible wrapper around OpenAI's TTS models.
