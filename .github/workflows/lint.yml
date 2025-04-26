@@ -28,6 +28,10 @@ jobs:
             tar xz --strip-components 1 --wildcards \*/golangci-lint
           mkdir -p bin && mv golangci-lint bin/
 
+      - name: Install ALSA development libraries (Ubuntu only)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libasound2-dev
+
       - name: Run checks
         run: |
           STATUS=0
