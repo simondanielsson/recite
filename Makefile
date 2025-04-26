@@ -1,13 +1,21 @@
 .PHONY: build
 build:
-	go build ./...
+	go build -o recite cmd/recite/main.go
+	go build -o cli cmd/cli/main.go
 
-.PHONY: run
-run:
+.PHONY: run-api
+run-api:
 	./recite
 
-.PHONY: build-and-run
-build-and-run: build run
+.PHONY: run-cli
+run-cli:
+	./cli
+
+.PHONY: api
+api: build run-api
+
+.PHONY: cli
+cli: build run-cli
 
 .PHONY: test
 test:
@@ -19,4 +27,4 @@ lint:
 	go vet ./...
 	golangci-lint run
 
-.DEFAULT_GOAL := build-and-run
+.DEFAULT_GOAL := cli
