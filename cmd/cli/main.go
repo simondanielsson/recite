@@ -19,6 +19,9 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer cancel()
 
+	// TODO: load article from url and parse it and clean it.
+	// TODO: check that article is not too long for input context limit for speech model
+
 	article := `A New Bonsai API
 Bonsai is the frontend web framework we use to build the vast majority of web apps at Jane Street. Here is some example code:
 
