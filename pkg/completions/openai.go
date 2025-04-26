@@ -13,7 +13,7 @@ type OpenAICompletion struct {
 	client openai.Client
 }
 
-// NewOpenAICompletion creates a new OpenAI Completion
+// NewOpenAICompletion creates a new OpenAI Completion client
 func NewOpenAICompletion() OpenAICompletion {
 	return OpenAICompletion{
 		client: openai.NewClient(),
