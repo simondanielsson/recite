@@ -26,6 +26,10 @@ jobs:
       - name: Download dependencies
         run: go mod download
 
+      - name: Install ALSA development libraries (Ubuntu only)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libasound2-dev
+
       - name: Run unit tests
         run: go test -race ./...
 
