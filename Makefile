@@ -27,4 +27,13 @@ lint:
 	go vet ./...
 	golangci-lint run
 
+.PHONY: clean
+clean:
+	go mod verify
+	go mod download
+	go mod tidy
+
+.PHONY: ci
+ci: clean lint test
+
 .DEFAULT_GOAL := cli

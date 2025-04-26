@@ -22,10 +22,9 @@ make api
 
 ## Contributing
 
-Always lint and test your code using
+Always verify your code using
 
 ```bash
-make lint
-make test
+make ci
 ```
 

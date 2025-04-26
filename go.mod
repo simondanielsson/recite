@@ -5,14 +5,15 @@ go 1.23.8
 require (
 	github.com/ebitengine/oto/v3 v3.3.3
 	github.com/joho/godotenv v1.5.1
+	github.com/noirbizarre/gonja v0.0.0-20200629003239-4d051fd0be61
 	github.com/openai/openai-go v0.1.0-beta.10
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
 	github.com/ebitengine/purego v0.8.0 // indirect
 	github.com/goph/emperror v0.17.1 // indirect
 	github.com/konsorten/go-windows-terminal-sequences v1.0.1 // indirect
-	github.com/noirbizarre/gonja v0.0.0-20200629003239-4d051fd0be61 // indirect
 	github.com/pkg/errors v0.8.1 // indirect
 	github.com/sirupsen/logrus v1.3.0 // indirect
 	github.com/tidwall/gjson v1.14.4 // indirect
@@ -22,5 +23,4 @@ require (
 	golang.org/x/crypto v0.32.0 // indirect
 	golang.org/x/sys v0.29.0 // indirect
 	golang.org/x/term v0.28.0 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
