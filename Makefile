@@ -29,4 +29,4 @@ clean:
 .PHONY: ci
 ci: clean lint test
 
-.DEFAULT_GOAL := cli
+.DEFAULT_GOAL := build
