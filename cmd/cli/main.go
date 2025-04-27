@@ -3,8 +3,11 @@ package main
 import (
 	"context"
 	"log"
+	"net/url"
+	"os"
 	"time"
 
+	"github.com/simondanielsson/recite/pkg/article"
 	"github.com/simondanielsson/recite/pkg/completions"
 	"github.com/simondanielsson/recite/pkg/env"
 	"github.com/simondanielsson/recite/pkg/player"
@@ -12,6 +15,14 @@ import (
 )
 
 func main() {
+	// TODO: use a proper CLI library
+	if len(os.Args) < 2 {
+		log.Fatalf("A URL must be provided")
+	}
+	articleUrl, err := url.Parse(os.Args[1])
+	if err != nil {
+		panic(err)
+	}
 	if err := env.Load(); err != nil {
 		log.Fatal("failed loading .env")
 	}
@@ -19,27 +30,14 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer cancel()
 
-	// TODO: load article from url and parse it and clean it.
-	// TODO: check that article is not too long for input context limit for speech model
+	articleReader := article.New(3 * time.Second)
+	articleContent, err := articleReader.Read(*articleUrl)
+	if err != nil {
+		log.Fatalf("Failed reading article: %v", err)
+	}
+	articleContent = articleContent[:3500]
 
-	article := `A New Bonsai API
-Bonsai is the frontend web framework we use to build the vast majority of web apps at Jane Street. Here is some example code:
-
-### 
-type phase1_value
-type phase1_witness
-type phase2_value
-
-val only_callable_in_phase1 : phase1_witness @ local -> phase1_value
-
-val run_phase1 : (phase1_witness @ local -> 'a) -> 'a
-val run_phase2 : phase1_value -> phase2_value
-###
-
-This leverages the compiler’s escape analysis for local values, with the phase1_witness serving as proof we are in the correct phase.
-	`
-
-	augmentPrompts, err := prompts.NewAugmentArticlePrompts(article)
+	augmentPrompts, err := prompts.NewAugmentArticlePrompts(articleContent)
 	if err != nil {
 		log.Fatal(err)
 	}
