@@ -1,7 +1,6 @@
 package article
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -36,11 +35,11 @@ func (ar ArticleReader) Read(url url.URL) (string, error) {
 	// TODO: handle a PDF link
 	resp, err := ar.client.Get(url.String())
 	if err != nil {
-		return "", fmt.Errorf("failed fetching content from url %s: %w", url, err)
+		return "", fmt.Errorf("failed fetching content from url %s: %w", url.String(), err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return "", errors.New(fmt.Sprintf("got non-ok status code from article request: %d", resp.StatusCode))
+		return "", fmt.Errorf("got non-ok status code from article request: %d", resp.StatusCode)
 	}
 
 	reader, err := goquery.NewDocumentFromReader(resp.Body)

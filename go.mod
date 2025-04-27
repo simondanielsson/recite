@@ -3,6 +3,7 @@ module github.com/simondanielsson/recite
 go 1.23.8
 
 require (
+	github.com/PuerkitoBio/goquery v1.10.3
 	github.com/ebitengine/oto/v3 v3.3.3
 	github.com/joho/godotenv v1.5.1
 	github.com/noirbizarre/gonja v0.0.0-20200629003239-4d051fd0be61
@@ -11,7 +12,6 @@ require (
 )
 
 require (
-	github.com/PuerkitoBio/goquery v1.10.3 // indirect
 	github.com/andybalholm/cascadia v1.3.3 // indirect
 	github.com/ebitengine/purego v0.8.0 // indirect
 	github.com/goph/emperror v0.17.1 // indirect
