@@ -18,13 +18,14 @@ The app comes in two version: as a CLI and as an API.
 To build and launch the CLI version of `recite`, run
 
 ```bash
-make cli
+make build
+./cli "https://example-article.com/index"
 ```
 
 To run the API version, run
 
 ```bash
-make api
+make api # or ./api after building
 ```
 
 ## Contributing

@@ -7,15 +7,8 @@ build:
 run-api:
 	./recite
 
-.PHONY: run-cli
-run-cli:
-	./cli
-
 .PHONY: api
 api: build run-api
-
-.PHONY: cli
-cli: build run-cli
 
 .PHONY: test
 test:
