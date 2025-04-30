@@ -1,0 +1,6 @@
+server:
+  bind_address: # Environment variable
+  app_env: # Environment variable
+
+jwt:
+  secret: # Environment variable
