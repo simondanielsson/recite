@@ -1,14 +1,17 @@
+API_PATH := bin/api
+CLI_PATH := bin/cli
+
 .PHONY: build
 build:
-	go build -o bin/api cmd/recite/main.go
-	go build -o bin/cli cmd/cli/main.go
+	go build -o ${API_PATH} cmd/recite/main.go
+	go build -o ${CLI_PATH} cmd/cli/main.go
 
-.PHONY: run-api
-run-api:
-	./recite
+.PHONY: run
+run:
+	${API_PATH}
 
 .PHONY: api
-api: build run-api
+api: build run
 
 .PHONY: test
 test:
