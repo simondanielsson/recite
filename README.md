@@ -19,13 +19,13 @@ To build and launch the CLI version of `recite`, run
 
 ```bash
 make
-./cli "https://example-article.com/index"
+bin/cli "https://example-article.com/index"
 ```
 
 To run the API version, run
 
 ```bash
-make api # or ./api after building
+make api # or bin/api after building
 ```
 
 ## Contributing

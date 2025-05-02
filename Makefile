@@ -1,7 +1,7 @@
 .PHONY: build
 build:
-	go build -o recite cmd/recite/main.go
-	go build -o cli cmd/cli/main.go
+	go build -o bin/api cmd/recite/main.go
+	go build -o bin/cli cmd/cli/main.go
 
 .PHONY: run-api
 run-api:
