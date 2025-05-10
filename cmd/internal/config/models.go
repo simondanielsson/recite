@@ -1,9 +1,13 @@
 package config
 
+import "time"
+
 // ServerConfig represents the configuration for the server.
 type ServerConfig struct {
-	BindAddr string `mapstructure:"bind_address"`
-	AppEnv   string `mapstructure:"app_env"`
+	AppEnv       string        `mapstructure:"app_env"`
+	Addr         string        `mapstructure:"address"`
+	ReadTimeout  time.Duration `mapstructure:"read_timeout"`
+	WriteTimeout time.Duration `mapstructure:"write_timeout"`
 }
 
 // JWTConfig represents the configuration of the JWT secret
