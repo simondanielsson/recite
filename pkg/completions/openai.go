@@ -38,7 +38,7 @@ func (c OpenAICompletion) NewText(ctx context.Context, devMessage, userMessage s
 }
 
 // NewSpeech generates speech from content based on instructions
-func (c OpenAICompletion) NewSpeech(ctx context.Context, content, instructions string) (io.ReadCloser, error) {
+func (c OpenAICompletion) NewSpeech(ctx context.Context, content, instructions string, format openai.AudioSpeechNewParamsResponseFormat) (io.ReadCloser, error) {
 	res, err := c.client.Audio.Speech.New(ctx, openai.AudioSpeechNewParams{
 		Input: content,
 		Instructions: param.Opt[string]{
@@ -46,7 +46,7 @@ func (c OpenAICompletion) NewSpeech(ctx context.Context, content, instructions s
 		},
 		Model:          openai.SpeechModelGPT4oMiniTTS,
 		Voice:          openai.AudioSpeechNewParamsVoiceAlloy,
-		ResponseFormat: openai.AudioSpeechNewParamsResponseFormatPCM,
+		ResponseFormat: format,
 	})
 	if err != nil {
 		return nil, err

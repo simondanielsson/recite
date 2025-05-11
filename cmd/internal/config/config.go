@@ -1,11 +1,18 @@
 package config
 
-import "time"
+import (
+	"log"
+	"time"
+
+	"github.com/simondanielsson/recite/pkg/env"
+)
 
 // Load loads a config.
-func Load(getenv func(string) string) (Config, error) {
-	// TODO: load environment variables into the config using viper
-	return Config{
+func Load(getenv func(string) string, logger *log.Logger) (Config, error) {
+	if err := env.Load(); err != nil {
+		logger.Fatal("failed loading .env")
+	}
+	cfg := Config{
 		Server: ServerConfig{
 			AppEnv:       "local",
 			Addr:         "8999",
@@ -15,5 +22,6 @@ func Load(getenv func(string) string) (Config, error) {
 		JWT: JWTConfig{
 			Secret: "123",
 		},
-	}, nil
+	}
+	return cfg, nil
 }

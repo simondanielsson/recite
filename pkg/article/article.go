@@ -22,7 +22,7 @@ type ArticleReader struct {
 }
 
 // New creates a new ArticleReader
-func New(timeout time.Duration) ArticleReader {
+func NewReader(timeout time.Duration) ArticleReader {
 	return ArticleReader{
 		client: http.Client{
 			Timeout: timeout,
@@ -31,11 +31,15 @@ func New(timeout time.Duration) ArticleReader {
 }
 
 // Read reads an article from the web
-func (ar ArticleReader) Read(url url.URL) (string, error) {
+func (ar ArticleReader) Read(articleUrl string) (string, error) {
 	// TODO: handle a PDF link
-	resp, err := ar.client.Get(url.String())
+	validUrl, err := url.Parse(articleUrl)
 	if err != nil {
-		return "", fmt.Errorf("failed fetching content from url %s: %w", url.String(), err)
+		return "", fmt.Errorf("invalid url %s", articleUrl)
+	}
+	resp, err := ar.client.Get(validUrl.String())
+	if err != nil {
+		return "", fmt.Errorf("failed fetching content from url %s: %w", articleUrl, err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {

@@ -3,10 +3,10 @@ package main
 import (
 	"context"
 	"log"
-	"net/url"
 	"os"
 	"time"
 
+	"github.com/openai/openai-go"
 	"github.com/simondanielsson/recite/pkg/article"
 	"github.com/simondanielsson/recite/pkg/completions"
 	"github.com/simondanielsson/recite/pkg/env"
@@ -19,10 +19,7 @@ func main() {
 	if len(os.Args) < 2 {
 		log.Fatalf("A URL must be provided")
 	}
-	articleUrl, err := url.Parse(os.Args[1])
-	if err != nil {
-		panic(err)
-	}
+	articleUrl := os.Args[1]
 	if err := env.Load(); err != nil {
 		log.Fatal("failed loading .env")
 	}
@@ -30,8 +27,8 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer cancel()
 
-	articleReader := article.New(3 * time.Second)
-	articleContent, err := articleReader.Read(*articleUrl)
+	articleReader := article.NewReader(3 * time.Second)
+	articleContent, err := articleReader.Read(articleUrl)
 	if err != nil {
 		log.Fatalf("Failed reading article: %v", err)
 	}
@@ -49,7 +46,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	stream, err := completion.NewSpeech(ctx, refinedContent, recitePrompts.Developer)
+	stream, err := completion.NewSpeech(ctx, refinedContent, recitePrompts.Developer, openai.AudioSpeechNewParamsResponseFormatPCM)
 	if err != nil {
 		log.Fatal(err)
 	}

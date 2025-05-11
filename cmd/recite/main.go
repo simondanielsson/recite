@@ -25,12 +25,13 @@ func main() {
 }
 
 func run(ctx context.Context, getenv func(string) string, outWriter io.Writer, errWriter io.Writer, args []string) error {
-	config, err := config.Load(getenv)
+	logger := logging.NewLogger(outWriter)
+
+	config, err := config.Load(getenv, logger)
 	if err != nil {
 		return err
 	}
 
-	logger := logging.NewLogger(outWriter)
 	server := server.New(config, logger)
 
 	quit := make(chan os.Signal, 1)
