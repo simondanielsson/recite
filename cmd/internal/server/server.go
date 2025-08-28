@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"log"
 	"net/http"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -17,7 +16,7 @@ type App struct {
 	DB     *pgxpool.Pool
 }
 
-func New(config config.Config, DB *pgxpool.Pool, logger *log.Logger) App {
+func New(config config.Config, DB *pgxpool.Pool, logger logging.Logger) App {
 	mux := http.NewServeMux()
 	routes.RegisterRoutes(mux, logger)
 

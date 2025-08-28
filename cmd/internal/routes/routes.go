@@ -3,12 +3,12 @@ package routes
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"strconv"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	constants "github.com/simondanielsson/recite/cmd/internal"
+	"github.com/simondanielsson/recite/cmd/internal/logging"
 	"github.com/simondanielsson/recite/cmd/internal/marshal"
 	"github.com/simondanielsson/recite/cmd/internal/queries"
 	"github.com/simondanielsson/recite/cmd/internal/services"
@@ -18,26 +18,28 @@ type messageResponse struct {
 	Message string `json:"message"`
 }
 
-func RegisterRoutes(mux *http.ServeMux, logger *log.Logger) {
+func RegisterRoutes(mux *http.ServeMux, logger logging.Logger) {
 	mux.Handle("GET /api/v1", rootGetHandler(logger))
 	mux.Handle("GET /api/v1/health", rootGetHandler(logger))
-	mux.Handle("POST /api/v1/recitals", recitalPostHandler(logger))
-	mux.Handle("GET /api/v1/recitals/{id}", recitalGetHandler(logger))
+	mux.Handle("POST /api/v1/recitals", createRecitalHandler(logger))
+	mux.Handle("GET /api/v1/recitals", listRecitalsHandler(logger))
+	mux.Handle("GET /api/v1/recitals/{id}", getRecitalHandler(logger))
+	mux.Handle("DELETE /api/v1/recitals/{id}", deleteRecitalHandler(logger))
 }
 
-func rootGetHandler(logger *log.Logger) http.Handler {
+func rootGetHandler(logger logging.Logger) http.Handler {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
 			if _, err := w.Write([]byte("ok\n")); err != nil {
-				logger.Println(err)
+				logger.Err.Println(err)
 				w.WriteHeader(http.StatusInternalServerError)
 			}
 		},
 	)
 }
 
-func recitalPostHandler(logger *log.Logger) http.Handler {
+func createRecitalHandler(logger logging.Logger) http.Handler {
 	type request struct {
 		Url string `json:"url"`
 	}
@@ -49,12 +51,8 @@ func recitalPostHandler(logger *log.Logger) http.Handler {
 		func(w http.ResponseWriter, r *http.Request) {
 			req, err := marshal.Decode[request](r)
 			if err != nil || req.Url == "" {
-				res := messageResponse{
-					Message: fmt.Sprintf("bad request, should contain url. Got %s", req.Url),
-				}
-				if err := marshal.Encode(r.Context(), w, r, http.StatusBadRequest, res); err != nil {
-					writeErrHeader(w, err, logger)
-				}
+				message := fmt.Sprintf("bad request, should contain url. Got %s", req.Url)
+				repondWithErrorMessage(w, r, message, http.StatusBadRequest, logger)
 				return
 			}
 
@@ -67,24 +65,25 @@ func recitalPostHandler(logger *log.Logger) http.Handler {
 			ctx := r.Context()
 			repository, ok := ctx.Value(constants.RepositoryKey).(*queries.Queries)
 			if !ok {
-				logGenericInternalServiceError(ctx, w, r, fmt.Errorf("failed loading repository"), logger)
+				respondWithOpaqueMessage(ctx, w, r, fmt.Errorf("failed loading repository"), logger)
 				return
 			}
 			pool, ok := ctx.Value(constants.DBConnPool).(*pgxpool.Pool)
 			if !ok {
-				logGenericInternalServiceError(ctx, w, r, fmt.Errorf("failed loading db connection pool"), logger)
+				respondWithOpaqueMessage(ctx, w, r, fmt.Errorf("failed loading db connection pool"), logger)
 				return
 			}
 
 			id, err := services.CreateRecital(ctx, req.Url, repository, pool, logger)
 			if err != nil {
-				logGenericInternalServiceError(ctx, w, r, err, logger)
+				respondWithOpaqueMessage(ctx, w, r, err, logger)
 				return
 			}
 
 			res := response{
 				Id: id,
 			}
+			w.Header().Add("Location", fmt.Sprintf("/api/v1/recitals/%d", id))
 			if err := marshal.Encode(ctx, w, r, http.StatusCreated, res); err != nil {
 				writeErrHeader(w, err, logger)
 				return
@@ -93,10 +92,40 @@ func recitalPostHandler(logger *log.Logger) http.Handler {
 	)
 }
 
-func recitalGetHandler(logger *log.Logger) http.Handler {
-	type response struct {
-		queries.Recital
-	}
+func listRecitalsHandler(logger logging.Logger) http.Handler {
+	type response []queries.Recital
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		offset, err := readIntQueryParam("offset", 0, w, r, logger)
+		if err != nil {
+			return
+		}
+
+		limit, err := readIntQueryParam("limit", 30, w, r, logger)
+		if err != nil {
+			return
+		}
+
+		ctx := r.Context()
+		repository, ok := ctx.Value(constants.RepositoryKey).(*queries.Queries)
+		if !ok {
+			respondWithOpaqueMessage(ctx, w, r, fmt.Errorf("failed loading repository"), logger)
+			return
+		}
+
+		recitals, err := services.ListRecitals(ctx, int32(limit), int32(offset), repository, logger)
+		if err != nil {
+			respondWithOpaqueMessage(ctx, w, r, err, logger)
+			return
+		}
+
+		if err := marshal.Encode(ctx, w, r, int(http.StatusOK), recitals); err != nil {
+			writeErrHeader(w, err, logger)
+			return
+		}
+	})
+}
+
+func getRecitalHandler(logger logging.Logger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id, err := strconv.Atoi(r.PathValue("id"))
 		if err != nil {
@@ -110,7 +139,7 @@ func recitalGetHandler(logger *log.Logger) http.Handler {
 		ctx := r.Context()
 		repository, ok := ctx.Value(constants.RepositoryKey).(*queries.Queries)
 		if !ok {
-			logGenericInternalServiceError(ctx, w, r, fmt.Errorf("failed loading repository"), logger)
+			respondWithOpaqueMessage(ctx, w, r, fmt.Errorf("failed loading repository"), logger)
 		}
 
 		recital, err := services.GetRecital(ctx, int32(id), repository, logger)
@@ -122,35 +151,82 @@ func recitalGetHandler(logger *log.Logger) http.Handler {
 			return
 		}
 
-		res := response{
-			Recital: recital,
-		}
-		if err := marshal.Encode(ctx, w, r, http.StatusOK, res); err != nil {
+		if err := marshal.Encode(ctx, w, r, http.StatusOK, recital); err != nil {
 			logFailedEncodingResponse(ctx, w, r, err, logger)
 		}
 	})
 }
 
-func writeErrHeader(w http.ResponseWriter, err error, logger *log.Logger) {
+func deleteRecitalHandler(logger logging.Logger) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id, err := strconv.Atoi(r.PathValue("id"))
+		if err != nil {
+			res := messageResponse{Message: "invalid id"}
+			if err := marshal.Encode(r.Context(), w, r, http.StatusBadRequest, res); err != nil {
+				writeErrHeader(w, err, logger)
+			}
+			return
+		}
+
+		ctx := r.Context()
+		repository, ok := ctx.Value(constants.RepositoryKey).(*queries.Queries)
+		if !ok {
+			respondWithOpaqueMessage(ctx, w, r, fmt.Errorf("failed loading repository"), logger)
+		}
+		if err := services.DeleteRecital(ctx, int32(id), repository, logger); err != nil {
+			res := messageResponse{Message: fmt.Sprintf("Could not find recital with id %d", id)}
+			if err := marshal.Encode(ctx, w, r, http.StatusNotFound, res); err != nil {
+				logFailedEncodingResponse(ctx, w, r, err, logger)
+			}
+			return
+		}
+		status := http.StatusNoContent
+		w.WriteHeader(status)
+		// A bit hacky way towrite override the existing context
+		ctx = context.WithValue(ctx, constants.StatusCodeKey, status)
+		*r = *(r.WithContext(ctx))
+	})
+}
+
+func repondWithErrorMessage(w http.ResponseWriter, r *http.Request, message string, code int, logger logging.Logger) {
+	res := messageResponse{
+		Message: message,
+	}
+	if err := marshal.Encode(r.Context(), w, r, code, res); err != nil {
+		writeErrHeader(w, err, logger)
+	}
+}
+
+func respondWithOpaqueMessage(ctx context.Context, w http.ResponseWriter, r *http.Request, err error, logger logging.Logger) {
+	logger.Err.Println(err)
+	repondWithErrorMessage(w, r, "Something went wrong.", int(http.StatusInternalServerError), logger)
+}
+
+func writeErrHeader(w http.ResponseWriter, err error, logger logging.Logger) {
 	w.WriteHeader(http.StatusInternalServerError)
 	if _, err := w.Write([]byte(err.Error())); err != nil {
-		logger.Print("failed writing error")
+		logger.Err.Println("failed writing error")
 	}
 }
 
-func logGenericInternalServiceError(ctx context.Context, w http.ResponseWriter, r *http.Request, err error, logger *log.Logger) {
-	res := messageResponse{Message: "Something went wrong."}
-	logger.Print(err)
-	if err := marshal.Encode(ctx, w, r, int(http.StatusInternalServerError), res); err != nil {
-		writeErrHeader(w, err, logger)
-		return
-	}
-}
-
-func logFailedEncodingResponse(ctx context.Context, w http.ResponseWriter, r *http.Request, err error, logger *log.Logger) {
-	logger.Println(err)
+func logFailedEncodingResponse(ctx context.Context, w http.ResponseWriter, r *http.Request, err error, logger logging.Logger) {
+	logger.Err.Println(err)
 	res := messageResponse{"failed to encode response"}
 	if err := marshal.Encode(ctx, w, r, http.StatusInternalServerError, res); err != nil {
 		writeErrHeader(w, err, logger)
+	}
+}
+
+func readIntQueryParam(name string, otherwise int, w http.ResponseWriter, r *http.Request, logger logging.Logger) (int, error) {
+	valueString := r.URL.Query().Get(name)
+	if valueString == "" {
+		return otherwise, nil
+	} else {
+		value, err := strconv.Atoi(valueString)
+		if err != nil {
+			repondWithErrorMessage(w, r, fmt.Sprintf("Invalid %s: expected integer", name), http.StatusBadRequest, logger)
+			return 0, err
+		}
+		return value, nil
 	}
 }

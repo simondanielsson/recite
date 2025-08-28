@@ -26,7 +26,7 @@ func main() {
 }
 
 func run(ctx context.Context, getenv func(string) string, outWriter io.Writer, errWriter io.Writer, args []string) error {
-	logger := logging.NewLogger(outWriter)
+	logger := logging.NewLogger(outWriter, errWriter)
 
 	config, err := config.Load(getenv, logger)
 	if err != nil {
@@ -44,15 +44,15 @@ func run(ctx context.Context, getenv func(string) string, outWriter io.Writer, e
 	go func() {
 		// Note: goroutine waits here until interrupt
 		<-quit
-		logger.Println("shutting down server...")
+		logger.Out.Println("shutting down server...")
 
 		if err := server.Shutdown(ctx); err != nil {
-			logger.Fatalf("failed to shutdown server: %v", err)
+			logger.Err.Fatalf("failed to shutdown server: %v", err)
 		}
-		logger.Println("server stopped gracefully")
+		logger.Out.Println("server stopped gracefully")
 	}()
 
-	logger.Printf("Listening on %s\n", server.Server.Addr)
+	logger.Out.Printf("Listening on %s\n", server.Server.Addr)
 	if err := server.Server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		fmt.Fprintf(errWriter, "error listening and serving: %s\n", err)
 		return err

@@ -10,13 +10,13 @@ import (
 )
 
 func Encode[T any](ctx context.Context, w http.ResponseWriter, r *http.Request, status int, v T) error {
-	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 
 	// A bit hacky way to write override the existing context
 	ctx = context.WithValue(ctx, constants.StatusCodeKey, status)
 	*r = *(r.WithContext(ctx))
 
+	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(v); err != nil {
 		return fmt.Errorf("encode json: %w", err)
 	}

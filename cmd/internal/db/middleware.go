@@ -3,16 +3,16 @@ package db
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	constants "github.com/simondanielsson/recite/cmd/internal"
+	"github.com/simondanielsson/recite/cmd/internal/logging"
 	"github.com/simondanielsson/recite/cmd/internal/queries"
 )
 
-func AddDatabaseMiddleware(handler http.Handler, pool *pgxpool.Pool, logger *log.Logger) http.Handler {
+func AddDatabaseMiddleware(handler http.Handler, pool *pgxpool.Pool, logger logging.Logger) http.Handler {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
@@ -24,11 +24,13 @@ func AddDatabaseMiddleware(handler http.Handler, pool *pgxpool.Pool, logger *log
 			// Attach transaction-scoped repository, and pool for transactions to be launched outside request context
 			ctx = context.WithValue(ctx, constants.RepositoryKey, repository)
 			ctx = context.WithValue(ctx, constants.DBConnPool, pool)
+			r = r.WithContext(ctx)
 
-			handler.ServeHTTP(w, r.WithContext(ctx))
+			handler.ServeHTTP(w, r)
 
-			status, ok := ctx.Value(constants.StatusCodeKey).(int)
+			status, ok := r.Context().Value(constants.StatusCodeKey).(int)
 			if !ok {
+				logger.Err.Println("No status code found in context, rolling back tx")
 				_ = tx.Rollback(ctx)
 				return
 			}
@@ -37,7 +39,7 @@ func AddDatabaseMiddleware(handler http.Handler, pool *pgxpool.Pool, logger *log
 				_ = tx.Rollback(ctx)
 			} else if err := tx.Commit(ctx); err != nil {
 				// Response has already been sent - just log
-				logger.Printf("tx commit failed: %v", err)
+				logger.Err.Printf("tx commit failed: %v", err)
 			}
 		},
 	)
