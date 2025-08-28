@@ -5,8 +5,6 @@ import (
 	"log"
 )
 
-const DateFormat string = "Mon Jan 2 15:04:05 MST 2006"
-
 // Logger holds a out and err logger
 type Logger struct {
 	Out *log.Logger

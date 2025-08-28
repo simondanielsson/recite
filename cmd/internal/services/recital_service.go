@@ -49,10 +49,18 @@ func generateRecital(id int32, url string, pool *pgxpool.Pool, logger logging.Lo
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Minute)
 	defer cancel()
 
-	repository, _, err := db.NewRepositoryWithTx(ctx, pool)
+	repository, commit, rollback, err := db.NewRepositoryWithTx(ctx, pool)
 	if err != nil {
 		return err
 	}
+	defer func() {
+		// Rollback if an error occurred
+		if err != nil {
+			if err := rollback(ctx); err != nil {
+				logger.Err.Println(err)
+			}
+		}
+	}()
 
 	articleReader := article.NewReader(3 * time.Second)
 	articleContent, err := articleReader.Read(url)
@@ -98,7 +106,12 @@ func generateRecital(id int32, url string, pool *pgxpool.Pool, logger logging.Lo
 	if err := repository.UpdateRecitalStatus(ctx, queries.UpdateRecitalStatusParams{ID: id, Status: string(Completed)}); err != nil {
 		return err
 	}
+
+	if err := commit(ctx); err != nil {
+		return err
+	}
 	logger.Out.Println("Successfully generated and persisted recital.")
+
 	return nil
 }
 

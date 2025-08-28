@@ -16,7 +16,7 @@ func AddDatabaseMiddleware(handler http.Handler, pool *pgxpool.Pool, logger logg
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
-			repository, tx, err := NewRepositoryWithTx(ctx, pool)
+			repository, commit, rollback, err := NewRepositoryWithTx(ctx, pool)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 			}
@@ -31,13 +31,13 @@ func AddDatabaseMiddleware(handler http.Handler, pool *pgxpool.Pool, logger logg
 			status, ok := r.Context().Value(constants.StatusCodeKey).(int)
 			if !ok {
 				logger.Err.Println("No status code found in context, rolling back tx")
-				_ = tx.Rollback(ctx)
+				_ = rollback(ctx)
 				return
 			}
 
 			if status >= http.StatusBadRequest {
-				_ = tx.Rollback(ctx)
-			} else if err := tx.Commit(ctx); err != nil {
+				_ = rollback(ctx)
+			} else if err := commit(ctx); err != nil {
 				// Response has already been sent - just log
 				logger.Err.Printf("tx commit failed: %v", err)
 			}
@@ -45,13 +45,15 @@ func AddDatabaseMiddleware(handler http.Handler, pool *pgxpool.Pool, logger logg
 	)
 }
 
-func NewRepositoryWithTx(ctx context.Context, pool *pgxpool.Pool) (*queries.Queries, pgx.Tx, error) {
+func NewRepositoryWithTx(ctx context.Context, pool *pgxpool.Pool) (q *queries.Queries, commit func(context.Context) error, rollback func(context.Context) error, err error) {
 	tx, err := pool.BeginTx(ctx, pgx.TxOptions{
 		IsoLevel:   pgx.Serializable,
 		AccessMode: pgx.ReadWrite,
 	})
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to start transaction: %w", err)
+		return nil, nil, nil, fmt.Errorf("failed to start transaction: %w", err)
 	}
-	return queries.New(pool).WithTx(tx), tx, nil
+	commit = func(ctx context.Context) error { return tx.Commit(ctx) }
+	rollback = func(ctx context.Context) error { return tx.Rollback(ctx) }
+	return queries.New(pool).WithTx(tx), commit, rollback, nil
 }
