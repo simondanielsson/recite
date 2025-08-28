@@ -147,7 +147,6 @@ func dtoFromQuery(recital queries.Recital) dto.Recital {
 		Title:       recital.Title,
 		Description: recital.Description,
 		Status:      recital.Status,
-		Path:        recital.Path,
 		CreatedAt:   recital.CreatedAt.Time,
 	}
 }

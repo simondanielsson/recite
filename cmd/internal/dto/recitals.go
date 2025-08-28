@@ -8,6 +8,5 @@ type Recital struct {
 	Title       string    `json:"title"`
 	Description string    `json:"description"`
 	Status      string    `json:"status"`
-	Path        string    `json:"path"`
 	CreatedAt   time.Time `json:"created_at"`
 }
