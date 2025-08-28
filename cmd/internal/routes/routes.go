@@ -1,12 +1,14 @@
 package routes
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
 	"strconv"
 
-	"github.com/simondanielsson/recite/cmd/internal/db"
+	"github.com/jackc/pgx/v5/pgxpool"
+	constants "github.com/simondanielsson/recite/cmd/internal"
 	"github.com/simondanielsson/recite/cmd/internal/marshal"
 	"github.com/simondanielsson/recite/cmd/internal/queries"
 	"github.com/simondanielsson/recite/cmd/internal/services"
@@ -28,6 +30,7 @@ func rootGetHandler(logger *log.Logger) http.Handler {
 		func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
 			if _, err := w.Write([]byte("ok\n")); err != nil {
+				logger.Println(err)
 				w.WriteHeader(http.StatusInternalServerError)
 			}
 		},
@@ -49,7 +52,7 @@ func recitalPostHandler(logger *log.Logger) http.Handler {
 				res := messageResponse{
 					Message: fmt.Sprintf("bad request, should contain url. Got %s", req.Url),
 				}
-				if err := marshal.Encode(w, r, http.StatusBadRequest, res); err != nil {
+				if err := marshal.Encode(r.Context(), w, r, http.StatusBadRequest, res); err != nil {
 					writeErrHeader(w, err, logger)
 				}
 				return
@@ -62,30 +65,27 @@ func recitalPostHandler(logger *log.Logger) http.Handler {
 			// 4. Build a simple voice streamer in a basic htmx web page
 
 			ctx := r.Context()
-			repository, ok := ctx.Value(db.RepositoryKey).(*queries.Queries)
+			repository, ok := ctx.Value(constants.RepositoryKey).(*queries.Queries)
 			if !ok {
-				res := messageResponse{Message: "Something went wrong."}
-				logger.Print(err)
-				if err := marshal.Encode(w, r, int(http.StatusInternalServerError), res); err != nil {
-					writeErrHeader(w, err, logger)
-					return
-				}
+				logGenericInternalServiceError(ctx, w, r, fmt.Errorf("failed loading repository"), logger)
+				return
+			}
+			pool, ok := ctx.Value(constants.DBConnPool).(*pgxpool.Pool)
+			if !ok {
+				logGenericInternalServiceError(ctx, w, r, fmt.Errorf("failed loading db connection pool"), logger)
+				return
 			}
 
-			id, err := services.CreateRecital(ctx, req.Url, repository, logger)
+			id, err := services.CreateRecital(ctx, req.Url, repository, pool, logger)
 			if err != nil {
-				res := messageResponse{Message: "Something went wrong."}
-				logger.Print(err)
-				if err := marshal.Encode(w, r, int(http.StatusInternalServerError), res); err != nil {
-					writeErrHeader(w, err, logger)
-					return
-				}
+				logGenericInternalServiceError(ctx, w, r, err, logger)
+				return
 			}
 
 			res := response{
 				Id: id,
 			}
-			if err := marshal.Encode(w, r, http.StatusCreated, res); err != nil {
+			if err := marshal.Encode(ctx, w, r, http.StatusCreated, res); err != nil {
 				writeErrHeader(w, err, logger)
 				return
 			}
@@ -93,40 +93,41 @@ func recitalPostHandler(logger *log.Logger) http.Handler {
 	)
 }
 
-// TODO: move
-type GenerationStatus string
-
-const (
-	InProgress GenerationStatus = "in progress"
-	Completed  GenerationStatus = "completed"
-	Failed     GenerationStatus = "failed"
-)
-
 func recitalGetHandler(logger *log.Logger) http.Handler {
 	type response struct {
-		Status GenerationStatus
+		queries.Recital
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id, err := strconv.Atoi(r.PathValue("id"))
 		if err != nil {
 			res := messageResponse{Message: "invalid id"}
-			if err := marshal.Encode(w, r, http.StatusBadRequest, res); err != nil {
-				writeErrHeader(w, err, logger)
-				return
-			}
-		}
-
-		_ = id
-		// TODO: unmock
-		res := response{Status: Completed}
-		if err := marshal.Encode(w, r, http.StatusOK, res); err != nil {
-			res := messageResponse{"failed to encode response"}
-			if err := marshal.Encode(w, r, http.StatusInternalServerError, res); err != nil {
+			if err := marshal.Encode(r.Context(), w, r, http.StatusBadRequest, res); err != nil {
 				writeErrHeader(w, err, logger)
 			}
+			return
 		}
 
-		return
+		ctx := r.Context()
+		repository, ok := ctx.Value(constants.RepositoryKey).(*queries.Queries)
+		if !ok {
+			logGenericInternalServiceError(ctx, w, r, fmt.Errorf("failed loading repository"), logger)
+		}
+
+		recital, err := services.GetRecital(ctx, int32(id), repository, logger)
+		if err != nil {
+			res := messageResponse{Message: fmt.Sprintf("Could not find recital with id %d", id)}
+			if err := marshal.Encode(ctx, w, r, http.StatusNotFound, res); err != nil {
+				logFailedEncodingResponse(ctx, w, r, err, logger)
+			}
+			return
+		}
+
+		res := response{
+			Recital: recital,
+		}
+		if err := marshal.Encode(ctx, w, r, http.StatusOK, res); err != nil {
+			logFailedEncodingResponse(ctx, w, r, err, logger)
+		}
 	})
 }
 
@@ -134,5 +135,22 @@ func writeErrHeader(w http.ResponseWriter, err error, logger *log.Logger) {
 	w.WriteHeader(http.StatusInternalServerError)
 	if _, err := w.Write([]byte(err.Error())); err != nil {
 		logger.Print("failed writing error")
+	}
+}
+
+func logGenericInternalServiceError(ctx context.Context, w http.ResponseWriter, r *http.Request, err error, logger *log.Logger) {
+	res := messageResponse{Message: "Something went wrong."}
+	logger.Print(err)
+	if err := marshal.Encode(ctx, w, r, int(http.StatusInternalServerError), res); err != nil {
+		writeErrHeader(w, err, logger)
+		return
+	}
+}
+
+func logFailedEncodingResponse(ctx context.Context, w http.ResponseWriter, r *http.Request, err error, logger *log.Logger) {
+	logger.Println(err)
+	res := messageResponse{"failed to encode response"}
+	if err := marshal.Encode(ctx, w, r, http.StatusInternalServerError, res); err != nil {
+		writeErrHeader(w, err, logger)
 	}
 }

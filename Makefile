@@ -32,4 +32,4 @@ clean:
 .PHONY: ci
 ci: clean lint test
 
-.DEFAULT_GOAL := build
+.DEFAULT_GOAL := api
