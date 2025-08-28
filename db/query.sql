@@ -22,3 +22,11 @@ RETURNING *;
 -- name: DeleteRecital :exec
 DELETE FROM recitals WHERE id = $1
 RETURNING *;
+
+-- name: GetUser :one
+SELECT * FROM users WHERE email = $1;
+
+-- name: CreateUser :one
+INSERT INTO users (email, password_hash, created_at)
+VALUES ($1, $2, $3)
+RETURNING *;

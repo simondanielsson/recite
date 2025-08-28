@@ -17,3 +17,10 @@ type Recital struct {
 	Path        string
 	CreatedAt   pgtype.Date
 }
+
+type User struct {
+	ID           int32
+	Email        string
+	PasswordHash string
+	CreatedAt    pgtype.Date
+}

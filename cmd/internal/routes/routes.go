@@ -30,6 +30,8 @@ func RegisterRoutes(mux *http.ServeMux, logger logging.Logger) {
 	mux.Handle("DELETE /api/v1/recitals/{id}", deleteRecitalHandler(logger))
 	mux.Handle("GET /api/v1/recitals/{id}/listen", mainpageHandler(logger))
 	mux.Handle("GET /api/v1/recitals/{id}/audio", streamRecitalAudioHandler(logger))
+	mux.Handle("POST /api/v1/users", createUserHandler(logger))
+	mux.Handle("GET /api/v1/auth", loginUserHandler(logger))
 }
 
 func mainpageHandler(logger logging.Logger) http.Handler {

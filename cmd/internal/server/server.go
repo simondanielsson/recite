@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/rs/cors"
 	"github.com/simondanielsson/recite/cmd/internal/config"
 	"github.com/simondanielsson/recite/cmd/internal/db"
 	"github.com/simondanielsson/recite/cmd/internal/logging"
@@ -23,6 +24,7 @@ func New(config config.Config, DB *pgxpool.Pool, logger logging.Logger) App {
 	var handler http.Handler = mux
 	handler = logging.AddLoggingMiddleware(handler, logger)
 	handler = db.AddDatabaseMiddleware(handler, DB, logger)
+	handler = cors.AllowAll().Handler(handler)
 
 	return App{
 		Server: http.Server{
