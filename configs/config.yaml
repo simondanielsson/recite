@@ -2,5 +2,14 @@ server:
   bind_address: # Environment variable
   app_env: # Environment variable
 
+db:
+  name: # Environment variable
+  user: # Environment variable
+  password: # Environment variable
+  host: # Environment variable
+  port: # Environment variable
+  driver: # Environment variable
+
+
 jwt:
   secret: # Environment variable

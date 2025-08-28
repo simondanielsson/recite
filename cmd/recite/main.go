@@ -10,6 +10,7 @@ import (
 	"syscall"
 
 	"github.com/simondanielsson/recite/cmd/internal/config"
+	"github.com/simondanielsson/recite/cmd/internal/db"
 	"github.com/simondanielsson/recite/cmd/internal/logging"
 	"github.com/simondanielsson/recite/cmd/internal/server"
 )
@@ -32,7 +33,11 @@ func run(ctx context.Context, getenv func(string) string, outWriter io.Writer, e
 		return err
 	}
 
-	server := server.New(config, logger)
+	db, err := db.New(ctx, config)
+	if err != nil {
+		return err
+	}
+	server := server.New(config, db, logger)
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
@@ -47,8 +52,8 @@ func run(ctx context.Context, getenv func(string) string, outWriter io.Writer, e
 		logger.Println("server stopped gracefully")
 	}()
 
-	logger.Printf("listening on %s\n", server.Addr)
-	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+	logger.Printf("Listening on %s\n", server.Server.Addr)
+	if err := server.Server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		fmt.Fprintf(errWriter, "error listening and serving: %s\n", err)
 		return err
 	}

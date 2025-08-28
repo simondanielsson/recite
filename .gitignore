@@ -26,3 +26,6 @@ go.work.sum
 
 # Executables
 bin/
+data/output/
+.env
+.env.db

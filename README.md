@@ -36,3 +36,16 @@ Always verify your code using
 make ci
 ```
 
+### Adding database migrations
+
+We use `dbmate` for migrations. After installing, create a new revision through
+
+```bash
+dbmate new <name_of_revision>
+```
+
+Apply the revision by running
+
+```bash
+dbmate up
+```

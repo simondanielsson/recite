@@ -14,6 +14,8 @@ import (
 	"github.com/simondanielsson/recite/pkg/prompts"
 )
 
+const maxContentLength int = 3500
+
 func main() {
 	// TODO: use a proper CLI library
 	if len(os.Args) < 2 {
@@ -32,7 +34,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed reading article: %v", err)
 	}
-	articleContent = articleContent[:3500]
+	articleContent = articleContent[:min(maxContentLength, len(articleContent))]
 
 	augmentPrompts, err := prompts.NewAugmentArticlePrompts(articleContent)
 	if err != nil {

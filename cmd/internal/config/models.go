@@ -10,6 +10,15 @@ type ServerConfig struct {
 	WriteTimeout time.Duration `mapstructure:"write_timeout"`
 }
 
+type DBConfig struct {
+	Name     string `mapstructure:"name"`
+	User     string `mapstructure:"user"`
+	Password string `mapstructure:"password"`
+	Host     string `mapstructure:"host"`
+	Port     string `mapstructure:"port"`
+	Driver   string `mapstructure:"driver"`
+}
+
 // JWTConfig represents the configuration of the JWT secret
 type JWTConfig struct {
 	Secret string `mapstructure:"secret"`
@@ -18,5 +27,6 @@ type JWTConfig struct {
 // Config represents a yaml configuration file.
 type Config struct {
 	Server ServerConfig
+	DB     DBConfig
 	JWT    JWTConfig
 }
