@@ -94,7 +94,7 @@ func generateRecital(id int32, url string, pool *pgxpool.Pool, logger logging.Lo
 	defer stream.Close()
 
 	logger.Out.Println("Persisting stream")
-	outPath := path.Join(baseOutputPath, fmt.Sprintf("%d_out.wav", id))
+	outPath := path.Join(BaseOutputPath, fmt.Sprintf("%d_out.wav", id))
 	if err := audio.Persist(stream, outPath); err != nil {
 		return fmt.Errorf("failed persisting audio: %w", err)
 	}

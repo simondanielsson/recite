@@ -3,7 +3,10 @@ package routes
 import (
 	"context"
 	"fmt"
+	"html/template"
 	"net/http"
+	"os"
+	"path"
 	"strconv"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -19,15 +22,46 @@ type messageResponse struct {
 }
 
 func RegisterRoutes(mux *http.ServeMux, logger logging.Logger) {
-	mux.Handle("GET /api/v1", rootGetHandler(logger))
-	mux.Handle("GET /api/v1/health", rootGetHandler(logger))
+	mux.Handle("GET /api/v1", healthcheckHandler(logger))
+	mux.Handle("GET /api/v1/health", healthcheckHandler(logger))
 	mux.Handle("POST /api/v1/recitals", createRecitalHandler(logger))
 	mux.Handle("GET /api/v1/recitals", listRecitalsHandler(logger))
 	mux.Handle("GET /api/v1/recitals/{id}", getRecitalHandler(logger))
 	mux.Handle("DELETE /api/v1/recitals/{id}", deleteRecitalHandler(logger))
+	mux.Handle("GET /api/v1/recitals/{id}/listen", mainpageHandler(logger))
+	mux.Handle("GET /api/v1/recitals/{id}/audio", streamRecitalAudioHandler(logger))
 }
 
-func rootGetHandler(logger logging.Logger) http.Handler {
+func mainpageHandler(logger logging.Logger) http.Handler {
+	page := template.Must(template.New("listen").Parse(`
+	<!doctype html>
+	<meta charset="utf-8" />
+	<title>Listen</title>
+	<body style="font-family: system-ui; padding: 2rem;">
+		<h1>Listen</h1>
+		<p>Now playing: {{.ID}}</p>
+		<audio controls preload="auto" style="width: 100%;" src="/api/v1/recitals/{{.ID}}/audio"></audio>
+	</body>
+	`))
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id, err := strconv.Atoi(r.PathValue("id"))
+		if err != nil {
+			res := messageResponse{Message: "invalid id"}
+			if err := marshal.Encode(r.Context(), w, r, http.StatusBadRequest, res); err != nil {
+				writeErrHeader(w, err, logger)
+			}
+			return
+		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		if err := page.Execute(w, struct{ ID int }{ID: id}); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	})
+}
+
+func healthcheckHandler(logger logging.Logger) http.Handler {
 	return http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
@@ -185,6 +219,42 @@ func deleteRecitalHandler(logger logging.Logger) http.Handler {
 		// A bit hacky way towrite override the existing context
 		ctx = context.WithValue(ctx, constants.StatusCodeKey, status)
 		*r = *(r.WithContext(ctx))
+	})
+}
+
+func streamRecitalAudioHandler(logger logging.Logger) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id, err := strconv.Atoi(r.PathValue("id"))
+		if err != nil {
+			res := messageResponse{Message: "invalid id"}
+			if err := marshal.Encode(r.Context(), w, r, http.StatusBadRequest, res); err != nil {
+				writeErrHeader(w, err, logger)
+			}
+			return
+		}
+
+		filename := path.Join(services.BaseOutputPath, fmt.Sprintf("%d_out.wav", id))
+		file, err := os.Open(filename)
+		if err != nil {
+			if os.IsNotExist(err) {
+				http.NotFound(w, r)
+			} else {
+				http.Error(w, "open failed", http.StatusInternalServerError)
+			}
+			return
+		}
+		defer file.Close()
+
+		stat, err := file.Stat()
+		if err != nil {
+			http.Error(w, "stat failed", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "audio/wav")
+		w.Header().Set("Accept-Ranges", "bytes")
+		w.Header().Set("Cache-Control", "public, max-age=3600")
+		http.ServeContent(w, r, stat.Name(), stat.ModTime(), file)
 	})
 }
 

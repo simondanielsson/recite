@@ -4,7 +4,7 @@ import "path"
 
 const maxArticleContentCharLength int = 3500
 
-var baseOutputPath string = path.Join("data", "output", "generations", "audio")
+var BaseOutputPath string = path.Join("data", "output", "generations", "audio")
 
 type Status string
 
