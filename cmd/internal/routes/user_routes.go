@@ -43,7 +43,7 @@ func createUserHandler(logger logging.Logger) http.Handler {
 			return
 		}
 
-		status := http.StatusOK
+		status := http.StatusCreated
 		w.WriteHeader(status)
 		// A bit hacky way towrite override the existing context
 		ctx = context.WithValue(ctx, constants.StatusCodeKey, status)

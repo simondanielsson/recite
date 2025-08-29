@@ -32,6 +32,7 @@ func RegisterRoutes(mux *http.ServeMux, logger logging.Logger) {
 	mux.Handle("GET /api/v1/recitals/{id}/audio", streamRecitalAudioHandler(logger))
 	mux.Handle("POST /api/v1/users", createUserHandler(logger))
 	mux.Handle("GET /api/v1/auth", loginUserHandler(logger))
+	mux.Handle("GET /api/v1/openapi.json", swaggerHandler(logger))
 }
 
 func mainpageHandler(logger logging.Logger) http.Handler {
@@ -301,4 +302,22 @@ func readIntQueryParam(name string, otherwise int, w http.ResponseWriter, r *htt
 		}
 		return value, nil
 	}
+}
+
+func swaggerHandler(logger logging.Logger) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		swaggerPath := "openapi.json"
+		swaggerData, err := os.ReadFile(swaggerPath)
+		if err != nil {
+			logger.Err.Printf("Failed to read swagger file: %v", err)
+			repondWithErrorMessage(w, r, "Failed to read OpenAPI specification", http.StatusInternalServerError, logger)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		if _, err := w.Write(swaggerData); err != nil {
+			logger.Err.Printf("Failed to write swagger response: %v", err)
+		}
+	})
 }

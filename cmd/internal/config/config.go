@@ -16,7 +16,7 @@ func Load(getenv func(string) string, logger logging.Logger) (Config, error) {
 	cfg := Config{
 		Server: ServerConfig{
 			AppEnv:       "local",
-			Addr:         "8999",
+			Addr:         "8080",
 			ReadTimeout:  30 * time.Second,
 			WriteTimeout: 30 * time.Second,
 		},
